@@ -1,94 +1,51 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.1",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "SuperMemory API",
+    "version": "1.0.0",
+    "description": "SuperMemory API provides chat, memory management and context retrieval endpoints.\n\nAuthentication\n----------------\nMost endpoints require a bearer token supplied via the `Authorization` header.  The token can be **either**:\n  • A signed JWT issued by SuperMemory or a supported auth vendor (HS256 in development, RS256 in production).\n  • An API key generated via `POST /v1/api-key/generate`.\n\nVendor / multi-tenant support is baked into the authentication layer: the bearer token represents the *vendor*; user identifiers that appear inside request bodies or path parameters are automatically scoped to that vendor on the server side."
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://api.supermemory.com",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development server"
     }
   ],
   "security": [
     {
-      "bearerAuth": []
+      "BearerAuth": []
     }
   ],
   "paths": {
-    "/plants": {
-      "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
+    "/v1/chat": {
+      "post": {
+        "summary": "Legacy chat endpoint",
+        "security": [
           {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
+            "BearerAuth": []
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
         "requestBody": {
-          "description": "Plant to add to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/ChatRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
-            "description": "plant response",
+            "description": "Chat response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ChatResponse"
                 }
               }
             }
@@ -96,121 +53,730 @@
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
-        "parameters": [
+    "/v2/chat": {
+      "post": {
+        "summary": "Enhanced chat endpoint with threading, context ranking and memory extraction",
+        "security": [
           {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+            "BearerAuth": []
           }
         ],
-        "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
-      "post": {
-        "description": "Information about a new plant added to the store",
         "requestBody": {
-          "description": "Plant added to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/EnhancedChatRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "Enhanced chat response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancedChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/chat/stream": {
+      "post": {
+        "summary": "Streaming enhanced chat (Server-Sent Events)",
+        "description": "Same behaviour as `/v2/chat` but returns individual tokens via SSE for low-latency client rendering.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnhancedChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stream of chat response tokens.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Server-Sent Events stream where each event payload is a single token."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/memories": {
+      "get": {
+        "summary": "Get user memories",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Optional limit"
+          },
+          {
+            "in": "query",
+            "name": "memory_type",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by memory type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of memories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/memories/consolidate": {
+      "post": {
+        "summary": "Consolidate similar memories",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consolidation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryConsolidationResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/threads/{thread_id}/chats": {
+      "get": {
+        "summary": "Get chats in a thread",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "$ref": "#/components/parameters/ThreadId"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chats list"
+          }
+        }
+      }
+    },
+    "/v1/messages/{parent_message_id}/chunks": {
+      "get": {
+        "summary": "Get message chunks",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chunks list"
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/chats/recent": {
+      "get": {
+        "summary": "Get recent chats for a user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent chats"
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/context": {
+      "get": {
+        "summary": "Get ranked context for a user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional query text"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context information"
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/profile": {
+      "put": {
+        "summary": "Update or create a user profile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile"
+          }
+        }
+      }
+    },
+    "/v1/users/{user_id}/stats": {
+      "get": {
+        "summary": "Get user statistics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/UserId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats object"
+          }
+        }
+      }
+    },
+    "/v1/api-key/generate": {
+      "post": {
+        "summary": "Create an API key for the authenticated user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "API key created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys": {
+      "get": {
+        "summary": "List API keys for the authenticated user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyInfoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys/{key_id}/disable": {
+      "post": {
+        "summary": "Disable an API key owned by the authenticated user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Disabled confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisableApiKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "Get information about the authenticated vendor",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated user info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "post": {
+        "summary": "Create a new user (public)",
+        "security": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check (public)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/health": {
+      "get": {
+        "summary": "Health check (public)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
     }
   },
   "components": {
-    "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Supply `Authorization: Bearer <token>`.\nThe token can be either a JWT (from supported auth vendors) **or** an API key generated via `/v1/api-key/generate`."
+      }
+    },
+    "parameters": {
+      "UserId": {
+        "name": "user_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
         }
       },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          }
+      "ThreadId": {
+        "name": "thread_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
         }
       }
     },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+    "schemas": {
+      "ChatRequest": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "message"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "External or internal user identifier."
+          },
+          "message": {
+            "type": "string"
+          },
+          "chat_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "thread_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "ContextItem": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "relevance_score": {
+            "type": "number",
+            "format": "float"
+          },
+          "recency_score": {
+            "type": "number",
+            "format": "float"
+          },
+          "combined_score": {
+            "type": "number",
+            "format": "float"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "RECENT_CHAT",
+              "EXTRACTED_MEMORY",
+              "SIMILAR_CONVERSATION",
+              "THREAD_SPECIFIC",
+              "MEMORY",
+              "VECTOR_SEARCH"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "thread_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "memory_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "chat_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "string"
+          },
+          "context_used": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContextItem"
+            }
+          },
+          "memory_updated": {
+            "type": "boolean"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "nullable": true
+          },
+          "context_truncated": {
+            "type": "boolean"
+          },
+          "chunks_created": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "EnhancedChatRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ChatRequest"
+          }
+        ]
+      },
+      "EnhancedChatResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ChatResponse"
+          }
+        ],
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MemoryConsolidationResult": {
+        "type": "object",
+        "properties": {
+          "consolidated_count": {
+            "type": "integer"
+          },
+          "removed_memory_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "new_memory_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateApiKeyRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Optional name for the API key"
+          }
+        }
+      },
+      "CreateApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "The generated API key"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name associated with the key"
+          }
+        }
+      },
+      "ApiKeyMetadata": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_used": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ApiKeyInfoResponse": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKeyMetadata"
+            }
+          }
+        }
+      },
+      "DisableApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "disabled": {
+            "type": "boolean"
+          },
+          "key_id": {
+            "type": "string"
+          }
+        }
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "internal_user_id": {
+            "type": "string"
+          },
+          "external_user_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "Optional client-specified UUID for the new user"
+          }
+        }
+      },
+      "CreateUserResponse": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "UUID of the created user"
+          }
+        }
       }
     }
   }
