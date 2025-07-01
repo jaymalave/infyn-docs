@@ -1,13 +1,13 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "SuperMemory API",
+    "title": "Infyn API",
     "version": "1.0.0",
-    "description": "SuperMemory API provides chat, memory management and context retrieval endpoints.\n\nAuthentication\n----------------\nMost endpoints require a bearer token supplied via the `Authorization` header.  The token can be **either**:\n  • A signed JWT issued by SuperMemory or a supported auth vendor (HS256 in development, RS256 in production).\n  • An API key generated via `POST /v1/api-key/generate`.\n\nVendor / multi-tenant support is baked into the authentication layer: the bearer token represents the *vendor*; user identifiers that appear inside request bodies or path parameters are automatically scoped to that vendor on the server side."
+    "description": "Infyn API provides chat, memory management and context retrieval endpoints.\n\nAuthentication\n----------------\nMost endpoints require a bearer token supplied via the `Authorization` header.  The token can be **either**:\n  • A signed JWT issued by Infyn or a supported auth vendor (HS256 in development, RS256 in production).\n  • An API key generated via `POST /v1/api-key/generate`.\n\nVendor / multi-tenant support is baked into the authentication layer: the bearer token represents the *vendor*; user identifiers that appear inside request bodies or path parameters are automatically scoped to that vendor on the server side."
   },
   "servers": [
     {
-      "url": "https://api.supermemory.com",
+      "url": "https://api.infyn.dev",
       "description": "Production server"
     },
     {
@@ -538,10 +538,7 @@
     "schemas": {
       "ChatRequest": {
         "type": "object",
-        "required": [
-          "user_id",
-          "message"
-        ],
+        "required": ["user_id", "message"],
         "properties": {
           "user_id": {
             "type": "string",

@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "SuperMemory API",
+  "theme": "willow",
+  "name": "Infyn API",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2e86fa",
+    "light": "#2e86fa",
+    "dark": "#2e86fa"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -25,7 +25,7 @@
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
   },
- 
+
   "footer": {
     "socials": {
       "x": "https://x.com/mintlify",
