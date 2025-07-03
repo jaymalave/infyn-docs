@@ -18,6 +18,14 @@
             "openapi": "api-reference/openapi.json"
           }
         ]
+      },
+      {
+        "tab": "Use Cases",
+        "pages": ["usecases"]
+      },
+      {
+        "tab": "Playground",
+        "href": "https://playground.infyn.dev"
       }
     ]
   },

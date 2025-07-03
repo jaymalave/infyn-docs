@@ -1,0 +1,112 @@
+---
+title: "Use Cases"
+description: "Examples showing how to integrate Infyn API in different product scenarios"
+---
+
+# Infyn API — Reference Use-Cases
+
+This document illustrates **how a third-party vendor can integrate Infyn API** in two different product scenarios:
+
+1.  Code-Review Bot for Software Teams
+2.  AI Customer-Support Assistant for e-commerce
+
+---
+
+## 1 · Code-Review Bot Vendor
+
+### Product vision
+
+A SaaS company (e.g. _CodeRabbit_) offers an AI that reviews pull-requests, leaves inline comments, and chats with developers about code smells and style guidelines.
+
+### How the vendor uses Infyn
+
+| Step                        | Infyn endpoint                 | Purpose                                                                                                                                                       |
+| :-------------------------- | :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Install / onboarding**    | `POST /v1/api-key/generate`    | CodeRabbit generates a vendor-scoped key and stores it in their backend.                                                                                      |
+| **User mapping**            | `POST /users`                  | Whenever a new developer logs in CodeRabbit, the backend creates a Infyn _internal user_ (one-to-one mapping).                                                |
+| **Per-PR review chat**      | `POST /v2/chat`                | The PR diff is sent as the **user message**; `thread_id` is set to the PR number so all discussion stays threaded.                                            |
+| **Fetch past advice**       | Implicit inside `process_chat` | Infyn retrieves relevant **memories** (e.g. past request to _not flag if-else statements_) and the developer's **user facts** (max line length, review tone). |
+| **Persist assistant reply** | Automatic                      | The assistant's comments are chunked, stored as **memories**, and can be surfaced in later PRs.                                                               |
+
+### Example timeline
+
+1.  Developer Bob opens **PR-58** on the `analytics-service`. Bob is already mapped to Infyn (`user_id = "u-123"`).  
+    • **User Facts** pulled: `preferred_language: rust`, `max_line_length: 120`, `review_tone: concise`.  
+    • **Memories** pulled: the developer's request in **PR-44** to "stop flagging if-else statements" as style issues.
+
+2.  CodeRabbit sends the diff to `/v2/chat`:
+
+    ```json
+    {
+      "user_id": "u-123",
+      "message": "<git-diff>",
+      "thread_id": "pr-58"
+    }
+    ```
+
+3.  Infyn replies with a structured review that clearly separates insights:
+
+    - From **User Facts** → flags three lines over 120 characters and writes suggestions in a concise tone.
+    - From **Memories** → skips flagging if-else statements, honoring Bob's request captured in **PR-44**.
+
+4.  Bob replies: _"Let's cap my line length at 100 instead."_  
+    → Infyn overwrites the user fact `max_line_length: 100` (facts are authoritative and mutable).
+
+5.  When the PR is merged Infyn stores its final inline comments as new **memories** so future reviews can reference how the SQL-injection risk was fixed here (memories accumulate, never overwritten).
+
+#### Benefits
+
+- Review comments respect Bob's personal style prefs.
+- Past advice is reused automatically; no re-inventing feedback.
+
+---
+
+## 2 · AI Customer-Support Assistant Vendor
+
+### Product vision
+
+_HelpDesk AI_ integrates into e-commerce sites, answering shoppers' questions, tracking order issues, and learning each shopper's preferences.
+
+### How the vendor uses Infyn
+
+| Step                              | Infyn endpoint                  | Purpose                                                                                       |
+| :-------------------------------- | :------------------------------ | :-------------------------------------------------------------------------------------------- |
+| **Account bootstrap**             | `/v1/api-key/generate`          | Vendor obtains an API key.                                                                    |
+| **Shopper identification**        | `/users`                        | Each e-commerce user gets an internal Infyn `user_id`.                                        |
+| **Live chat**                     | `/v2/chat` (streaming optional) | Customer messages ("Where is my order #A123?") are forwarded; assistant replies in real-time. |
+| **Structured preference capture** | Automatic via `user_facts`      | Phrases like "I prefer express shipping" are turned into facts that override older ones.      |
+| **Context retrieval**             | Automatic                       | On every chat, Infyn supplies:                                                                |
+
+- Recent order conversations (memories)
+- Stable facts (preferred payment method, usual sizes, allergies)
+
+### Example timeline
+
+1.  Shopper Emma starts a chat: _"My espresso machine (order #9123) arrived with a cracked carafe. Also, please send future deliveries to my office."_ (`user_id = "e-999"`).  
+    • **User Facts** pulled: `preferred_shipping: express`, `default_address: home`, `allergies: peanuts`.  
+    • **Memories** pulled: last month's conversation about a broken glass lid (order #9001).
+
+2.  HelpDesk AI forwards the message to `/v2/chat` with `thread_id = "support-9123"`.
+
+3.  Infyn composes a reply by combining both data sources:
+
+    - From **Memories** → skips redundant troubleshooting steps because it recalls Emma already tried them for order #9001 and directly offers a replacement.
+    - From **User Facts** → proposes an express replacement shipment to her **home** address (current default).
+
+4.  Emma responds: _"Ship the replacement to my office and switch me to standard shipping."_  
+    → Infyn overwrites `default_address: office` and `preferred_shipping: standard` inside **user facts**.
+
+5.  Infyn confirms the updates and logs this conversation as a new **memory** so future agents see the context, while the updated shipping preferences live in **user facts** and are applied automatically next time.
+
+#### Benefits
+
+- Assistant maintains consistent, up-to-date profile facts (shipping, allergies).
+- Episodic memories (past orders) improve answer relevance without bloating the prompt.
+
+---
+
+### Takeaways
+
+- **Structured `user_facts`** keep the authoritative settings/minutiae small and fast.
+- **Unstructured `memories`** capture the rich, ever-growing conversation and code history.
+- Both vendors need only two core calls—`/users` and `/v2/chat`—to unlock personalised AI.
