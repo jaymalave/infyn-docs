@@ -21,41 +21,9 @@
     }
   ],
   "paths": {
-    "/v1/chat": {
-      "post": {
-        "summary": "Legacy chat endpoint",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Chat response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v2/chat": {
       "post": {
-        "summary": "Enhanced chat endpoint with threading, context ranking and memory extraction",
+        "summary": "Chat endpoint",
         "security": [
           {
             "BearerAuth": []
@@ -87,7 +55,7 @@
     },
     "/v2/chat/stream": {
       "post": {
-        "summary": "Streaming enhanced chat (Server-Sent Events)",
+        "summary": "Stream chat",
         "description": "Same behaviour as `/v2/chat` but returns individual tokens via SSE for low-latency client rendering.",
         "security": [
           {
@@ -351,7 +319,7 @@
     },
     "/v1/api-key/generate": {
       "post": {
-        "summary": "Create an API key for the authenticated user",
+        "summary": "Create an API key",
         "security": [
           {
             "BearerAuth": []
@@ -383,7 +351,7 @@
     },
     "/v1/api-keys": {
       "get": {
-        "summary": "List API keys for the authenticated user",
+        "summary": "List API keys",
         "security": [
           {
             "BearerAuth": []
@@ -405,7 +373,7 @@
     },
     "/v1/api-keys/{key_id}/disable": {
       "post": {
-        "summary": "Disable an API key owned by the authenticated user",
+        "summary": "Disable an API key",
         "security": [
           {
             "BearerAuth": []
@@ -486,17 +454,6 @@
       }
     },
     "/health": {
-      "get": {
-        "summary": "Health check (public)",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/v1/health": {
       "get": {
         "summary": "Health check (public)",
         "security": [],
