@@ -24,6 +24,10 @@
         "pages": ["usecases"]
       },
       {
+        "tab": "Architecture",
+        "pages": ["architecture"]
+      },
+      {
         "tab": "Playground",
         "href": "https://playground.infyn.dev"
       }
